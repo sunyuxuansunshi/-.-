@@ -1,0 +1,32 @@
+[root@web2 ~]# cd /tmp/code
+[root@web2 code]# ls
+[root@web2 code]# vim user.slice                 //挑选任意文件修改其内容
+[root@web2 code]# svn ci -m "modify user"        //将本地修改的数据同步到服务器
+[root@web2 code]# svn update                    //将服务器上新的数据同步到本地
+[root@web2 code]# svn info     svn://192.168.2.100    //查看版本仓库基本信息
+[root@web2 code]# svn log     svn://192.168.2.100    //查看版本仓库的日志
+[root@web2 code]# echo "test" > test.sh        //本地新建一个文件
+[root@web2 code]# svn ci -m "new file"            //提交失败，该文件不被svn管理
+[root@web2 code]# svn add test.sh                //将文件或目录加入版本控制
+[root@web2 code]# svn ci -m "new file"            //再次提交，成功
+[root@web2 code]# svn mkdir subdir                //创建子目录
+[root@web2 code]# svn rm timers.target            //使用svn删除文件
+[root@web2 code]# svn ci -m "xxx"                //提交一次代码
+[root@web2 code]# vim umount.target            //任意修改本地的一个文件
+[root@web2 code]# svn diff                     //查看所有文件的差异
+[root@web2 code]# svn diff umount.target        //仅查看某一个文件的差异
+[root@web2 code]# svn cat svn://192.168.2.100/reboot.target    //查看服务器文件的内容
+[root@web2 code]# sed -i 'd' tmp.mount            
+//删除文件所有内容，但未提交
+[root@web2 code]# svn revert tmp.mount            
+//还原tmp.mount文件
+[root@web2 code]# rm -rf  *.target                
+//任意删除若干文件
+[root@web2 code]# svn update                    
+//还原
+[root@web2 code]# sed -i '1a #test###' tuned.service
+//修改本地副本中的代码文件
+[root@web2 code]# svn ci  -m  "xxx"
+//提交代码
+[root@web2 code]# svn merge -r7:2    tuned.service    
+//将文件从版本7还原到版本2

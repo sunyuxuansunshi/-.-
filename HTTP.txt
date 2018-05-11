@@ -1,0 +1,114 @@
+	HTTP服务 
+	
+	简称超文本传输协议			1、安装
+	基于B/S架构的网页服务			2、配置
+	1）服务端提供网页			3、启动
+	2）浏览器下载显示网页			4、加入开机启动
+	软件包名：httpd
+	起服务：httpd
+	主配置文件
+	/etc/httpd/conf/httpd.conf
+	/etc/httpd/conf.d/
+	默认网页存放目录
+	/var/www/html 
+	默认读取网页格式
+	index.html
+	默认端口
+	80
+	访问方式：
+	1）elinks  -dump   网址       #命令访问
+	2）firefox         网址	      #浏览器访问
+	练习题：
+	1、新建一个网页内容是：  redhat
+	cd  /var/www/html/jd
+	vi  index.html
+	redhat
+	/var/www/html/taobao
+	vi  index.html
+	centos
+	2、使用客户端浏览器正常访问内容
+	3、使用命令模式正常访问内容	
+	yum   -y install  elinks 
+	elinks  -dump    192.168.1.254
+	
+	httpd 虚拟主机
+	
+   cp  /etc/httpd/conf/httpd.conf   /etc/httpd/conf/httpd.conf.bak
+	vim   /etc/httpd/conf/httpd.conf
+	NameVirtualHost *:80     #默认在990行
+	 <VirtualHost *:80>   
+   	 DocumentRoot   网页根目录  /var/www/html/qq
+    	 ServerName     网站名称    www.qq.com
+	</VirtualHost>
+	 <VirtualHost *:80>   
+   	 DocumentRoot   网页根目录  /var/www/html/taobao
+    	 ServerName     网站名称    www.taobao.com
+	</VirtualHost>
+        mkdir  /var/www/html/目录名称
+	vim  /var/www/html/qq/index.html
+	qq
+	在客户端上操作：
+	vim  /etc/hosts
+	192.168.1.254 www.taobao.com    www.qq.com
+	elinks  -dump   www.qq.com
+        
+	  
+
+
+	例子：
+	打开配置文件
+	vim  /etc/httpd/conf/httpd.conf
+	第一去掉990行的注释
+	第二步：
+	<VirtualHost *:80>   
+   	 DocumentRoot     /var/www/html/qq
+    	 ServerName       www.qq.com
+	</VirtualHost>
+	 <VirtualHost *:80>   
+   	 DocumentRoot     /var/www/html/taobao
+    	 ServerName       www.taobao.com
+	</VirtualHost>
+	第三步：创建目录
+	mkdir   /var/www/html/{qq,taobao}
+	vim  /var/www/html/qq/index.html
+	qq
+	vim  /var/www/html/taobao/index.html
+	taobao
+	第四部重启服务：
+	/etc/init.d/httpd  restart
+	第五步：客户端测试
+	vim   /etc/hosts
+	192.168.1.254	www.qq.com  www.taobao.com
+	elinks  -dump   www.qq.com
+	elinks  -dump   www.taobao.com
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

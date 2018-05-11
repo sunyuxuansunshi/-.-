@@ -1,0 +1,104 @@
+
+
+######################################################################################################################
+
+PXE网络装机
+
+需要配置 
+	DHCP动态分配IP服务 
+	TEFP简单的网络传输协议
+	HTTP网络协议 （FTP、NFS）搭建Yum源 
+
+1.DHCP 
+	安装 dhcp 软件包  
+	配置/etc/dhcp/dhcpd.conf文件 把案例读入文件 
+	subnet 192.168.4.0 netmask 255.255.255.0 {     	#分配ip的网端、子网掩码
+  	range 192.168.4.10 192.168.4.100;			#分配网端哪些范围内的ip
+	  option domain-name-servers 8.8.8.8; 		#分配的dns服务器地址
+	  option routers 192.168.4.254; 			#分配的网关
+      	  next-server 192.168.4.7;			#下一步去找 192.168.4.7
+      	  filename "pxelinux.0"; 			#去找“pxelinux.0”这个文件
+}    
+ 重其服务
+3.TFTP
+	安装 tftp-server 软件包    重起tftp服务
+	默认共享路径为/var/lib/tftpboot/  端口号为69
+
+	yum provides */pxelinux.0    				#查看什么软件包会产生pxelinux.0的文件
+
+	安装 syslinux 软件包
+
+	rpm -ql syslinux | grep pxelinux.0			#列出syslinux的安装清单，查看pxelinux文件在那个路径下
+
+
+4.部署默认菜单文件
+
+	在tftp共享创建'pxelinux.cfg'的文件夹
+
+	cp /dvd/isolinux/isolinux.cfg   /var/lib/tftpboot/pxelinux.cfg/default
+								#拷贝光盘的菜单文件到pxelinux.cfg文件夹改名为default
+
+	chmod u+w /var/lib/tftpboot/pxelinux.cfg/default
+								#给文件用户u加上x权限
+
+5.部署图形模块和背景图片
+
+	cp  /dvd/isolinux/vesamenu.c32  /dvd/isolinux/splash.png   /var/lib/tftpboot/
+								#拷贝光盘的图形模块和背景图片到tftp共享下
+
+6.部署启动内核和驱动程序
+
+	cp /dvd/isolinux/vmlinuz /dvd/isolinux/initrd.img /var/lib/tftpboot/
+								#拷贝光盘的启动内核和驱动程序到tftp共享下
+
+7.修改默认菜单文件
+
+	1	default vesamenu.c32  					#默认加载图形的模块
+	2	timeout 600           					#读秒时间为60秒
+	10	menu background splash.png       			#指定背景图片
+	11	menu title NSD1801 PXE Server !   			#标题信息
+	61	label linux
+  			menu label Install RHEL7        		#显示菜单的内容
+  			kernel vmlinuz                 		#加载内核
+  			append initrd=initrd.img      			#加载驱动
+
+
+8.搭建http服务，把光盘内容共享到网页
+
+
+9.配置应答文件
+
+	安装system-config-kickstart软件包
+	本地yum仓库标示需要改为 development
+	图形选择
+	。。。。
+	保存--生成ks.cfg文件，拷贝到http网页共享，/var/www/html/
+
+
+10.修改默认菜单文件
+
+	指定ks.cfg文件
+
+	label linux
+  		  menu label Install RHEL7
+		  kernel vmlinuz
+		  append initrd=initrd.img  ks=http://192.168.4.7/ks.cfg
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

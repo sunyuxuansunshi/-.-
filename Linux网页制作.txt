@@ -1,0 +1,28 @@
+1、安装一个系统
+2、配置YUM
+[root@qq 桌面]# cd  /etc/yum.repos.d/
+[root@qq yum.repos.d]# vim  rhel-source.repo 
+[rhel-source]
+name=Red Hat Enterprise Linux $releasever - $basearch - Source
+baseurl=file:///mnt
+enabled=1
+gpgcheck=0
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+[root@qq yum.repos.d]# mount   /dev/sr0   /mnt/
+3、安装httpd服务
+[root@qq ~]# yum   -y install  httpd
+4、设置域名访问，www.qq.com
+[root@qq ~]# vim  /etc/httpd/conf/httpd.conf
+276--》行把注释去掉，改成这个   ServerName www.qq.com
+[root@qq ~]# /etc/init.d/httpd   restart
+停止 httpd：                                               [确定]
+正在启动 httpd：                                           [确定]
+
+5、测试是否可以访问或www.qq.com
+127.0.0.1
+http://www.qq.com/
+
+
+
+
+

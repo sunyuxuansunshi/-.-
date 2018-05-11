@@ -1,0 +1,636 @@
+1、安装ldap服务
+
+#!/bin/bash
+echo "install ldap rpm"
+yum install -y openldap-servers openldap-clients
+cp /usr/share/openldap-servers/DB_CONFIG.example /var/lib/ldap/DB_CONFIG
+chown ldap. /var/lib/ldap/DB_CONFIG
+systemctl start slapd
+systemctl enable slapd
+
+    1
+    2
+    3
+    4
+    5
+    6
+    7
+
+2、配置ldap服务
+
+# generate encrypted password
+[root@dlp ~]# slappasswd 
+New password:
+Re-enter new password:
+{SSHA}xxxxxxxxxxxxxxxxxxxxxxxx
+[root@dlp ~]# vi chrootpw.ldif
+# specify the password generated above for "olcRootPW" section
+dn: olcDatabase={0}config,cn=config
+changetype: modify
+add: olcRootPW
+olcRootPW: {SSHA}xxxxxxxxxxxxxxxxxxxxxxxx
+
+[root@dlp ~]# ldapadd -Y EXTERNAL -H ldapi:/// -f chrootpw.ldif 
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+modifying entry "olcDatabase={0}config,cn=config"
+# generate encrypted password
+[root@dlp ~]# slappasswd 
+New password:
+Re-enter new password:
+{SSHA}xxxxxxxxxxxxxxxxxxxxxxxx
+[root@dlp ~]# vi chrootpw.ldif
+# specify the password generated above for "olcRootPW" section
+dn: olcDatabase={0}config,cn=config
+changetype: modify
+add: olcRootPW
+olcRootPW: {SSHA}xxxxxxxxxxxxxxxxxxxxxxxx
+
+[root@dlp ~]# ldapadd -Y EXTERNAL -H ldapi:/// -f chrootpw.ldif 
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+modifying entry "olcDatabase={0}config,cn=config"
+
+导入基本模式
+
+[root@dlp ~]# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/cosine.ldif 
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=cosine,cn=schema,cn=config"
+
+[root@dlp ~]# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/nis.ldif 
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=nis,cn=schema,cn=config"
+
+[root@dlp ~]# ldapadd -Y EXTERNAL -H ldapi:/// -f /etc/openldap/schema/inetorgperson.ldif 
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+adding new entry "cn=inetorgperson,cn=schema,cn=config"
+# generate encrypted password
+[root@dlp ~]# slappasswd 
+New password:
+Re-enter new password:
+{SSHA}xxxxxxxxxxxxxxxxxxxxxxxx
+[root@dlp ~]# vi chrootpw.ldif
+# specify the password generated above for "olcRootPW" section
+dn: olcDatabase={0}config,cn=config
+changetype: modify
+add: olcRootPW
+olcRootPW: {SSHA}xxxxxxxxxxxxxxxxxxxxxxxx
+
+[root@dlp ~]# ldapadd -Y EXTERNAL -H ldapi:/// -f chrootpw.ldif 
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+modifying entry "olcDatabase={0}config,cn=config"
+
+在ldap的DB中设置域名
+
+# generate directory manager's password
+[root@dlp ~]# slappasswd 
+New password:
+Re-enter new password:
+{SSHA}xxxxxxxxxxxxxxxxxxxxxxxx
+[root@dlp ~]# vi chdomain.ldif
+# replace to your own domain name for "dc=***,dc=***" section
+# specify the password generated above for "olcRootPW" section
+ dn: olcDatabase={1}monitor,cn=config
+changetype: modify
+replace: olcAccess
+olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth"
+  read by dn.base="cn=Manager,dc=srv,dc=world" read by * none
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: dc=srv,dc=world
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootDN
+olcRootDN: cn=Manager,dc=srv,dc=world
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+add: olcRootPW
+olcRootPW: {SSHA}xxxxxxxxxxxxxxxxxxxxxxxx
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+add: olcAccess
+olcAccess: {0}to attrs=userPassword,shadowLastChange by
+  dn="cn=Manager,dc=srv,dc=world" write by anonymous auth by self write by * none
+olcAccess: {1}to dn.base="" by * read
+olcAccess: {2}to * by dn="cn=Manager,dc=srv,dc=world" write by * read
+
+[root@dlp ~]# ldapmodify -Y EXTERNAL -H ldapi:/// -f chdomain.ldif 
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+modifying entry "olcDatabase={1}monitor,cn=config"
+
+modifying entry "olcDatabase={2}hdb,cn=config"
+
+modifying entry "olcDatabase={2}hdb,cn=config"
+
+modifying entry "olcDatabase={2}hdb,cn=config"
+
+[root@dlp ~]# vi basedomain.ldif
+# replace to your own domain name for "dc=***,dc=***" section
+ dn: dc=srv,dc=world
+objectClass: top
+objectClass: dcObject
+objectclass: organization
+o: Server World
+dc: Srv
+
+dn: cn=Manager,dc=srv,dc=world
+objectClass: organizationalRole
+cn: Manager
+description: Directory Manager
+
+dn: ou=People,dc=srv,dc=world
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Group,dc=srv,dc=world
+objectClass: organizationalUnit
+ou: Group
+
+[root@dlp ~]# ldapadd -x -D cn=Manager,dc=srv,dc=world -W -f basedomain.ldif 
+Enter LDAP Password: # directory manager's password
+adding new entry "dc=srv,dc=world"
+
+adding new entry "cn=Manager,dc=srv,dc=world"
+
+adding new entry "ou=People,dc=srv,dc=world"
+
+adding new entry "ou=Group,dc=srv,dc=world"
+
+    # generate directory manager's password
+[root@dlp ~]# slappasswd 
+New password:
+Re-enter new password:
+{SSHA}xxxxxxxxxxxxxxxxxxxxxxxx
+[root@dlp ~]# vi chdomain.ldif
+# replace to your own domain name for "dc=***,dc=***" section
+# specify the password generated above for "olcRootPW" section
+ dn: olcDatabase={1}monitor,cn=config
+changetype: modify
+replace: olcAccess
+olcAccess: {0}to * by dn.base="gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth"
+  read by dn.base="cn=Manager,dc=srv,dc=world" read by * none
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcSuffix
+olcSuffix: dc=srv,dc=world
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+replace: olcRootDN
+olcRootDN: cn=Manager,dc=srv,dc=world
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+add: olcRootPW
+olcRootPW: {SSHA}xxxxxxxxxxxxxxxxxxxxxxxx
+
+dn: olcDatabase={2}hdb,cn=config
+changetype: modify
+add: olcAccess
+olcAccess: {0}to attrs=userPassword,shadowLastChange by
+  dn="cn=Manager,dc=srv,dc=world" write by anonymous auth by self write by * none
+olcAccess: {1}to dn.base="" by * read
+olcAccess: {2}to * by dn="cn=Manager,dc=srv,dc=world" write by * read
+
+[root@dlp ~]# ldapmodify -Y EXTERNAL -H ldapi:/// -f chdomain.ldif 
+SASL/EXTERNAL authentication started
+SASL username: gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth
+SASL SSF: 0
+modifying entry "olcDatabase={1}monitor,cn=config"
+
+modifying entry "olcDatabase={2}hdb,cn=config"
+
+modifying entry "olcDatabase={2}hdb,cn=config"
+
+modifying entry "olcDatabase={2}hdb,cn=config"
+
+[root@dlp ~]# vi basedomain.ldif
+# replace to your own domain name for "dc=***,dc=***" section
+ dn: dc=srv,dc=world
+objectClass: top
+objectClass: dcObject
+objectclass: organization
+o: Server World
+dc: Srv
+
+dn: cn=Manager,dc=srv,dc=world
+objectClass: organizationalRole
+cn: Manager
+description: Directory Manager
+
+dn: ou=People,dc=srv,dc=world
+objectClass: organizationalUnit
+ou: People
+
+dn: ou=Group,dc=srv,dc=world
+objectClass: organizationalUnit
+ou: Group
+
+[root@dlp ~]# ldapadd -x -D cn=Manager,dc=srv,dc=world -W -f basedomain.ldif 
+Enter LDAP Password: # directory manager's password
+adding new entry "dc=srv,dc=world"
+
+adding new entry "cn=Manager,dc=srv,dc=world"
+
+adding new entry "ou=People,dc=srv,dc=world"
+
+adding new entry "ou=Group,dc=srv,dc=world"
+开放端口
+
+# systemctl stop firewalld
+# systemctl disable firewalld
+# setenforce 0
+
+# systemctl stop firewalld
+# systemctl disable firewalld
+# setenforce 0
+
+添加一个用户
+
+# generate encrypted password
+[root@dlp ~]# slappasswd 
+New password:
+Re-enter new password:
+{SSHA}xxxxxxxxxxxxxxxxx
+[root@dlp ~]# vi ldapuser.ldif
+# create new
+# replace to your own domain name for "dc=***,dc=***" section
+ dn: uid=cent,ou=People,dc=srv,dc=world
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Cent
+sn: Linux
+userPassword: {SSHA}xxxxxxxxxxxxxxxxx
+loginShell: /bin/bash
+uidNumber: 1000
+gidNumber: 1000
+homeDirectory: /home/cent
+
+dn: cn=cent,ou=Group,dc=srv,dc=world
+objectClass: posixGroup
+cn: Cent
+gidNumber: 1000
+memberUid: cent
+
+[root@dlp ~]# ldapadd -x -D cn=Manager,dc=srv,dc=world -W -f ldapuser.ldif 
+Enter LDAP Password:
+adding new entry "uid=cent,ou=People,dc=srv,dc=world"
+
+adding new entry "cn=cent,ou=Group,dc=srv,dc=world"
+
+# generate encrypted password
+[root@dlp ~]# slappasswd 
+New password:
+Re-enter new password:
+{SSHA}xxxxxxxxxxxxxxxxx
+[root@dlp ~]# vi ldapuser.ldif
+# create new
+# replace to your own domain name for "dc=***,dc=***" section
+ dn: uid=cent,ou=People,dc=srv,dc=world
+objectClass: inetOrgPerson
+objectClass: posixAccount
+objectClass: shadowAccount
+cn: Cent
+sn: Linux
+userPassword: {SSHA}xxxxxxxxxxxxxxxxx
+loginShell: /bin/bash
+uidNumber: 1000
+gidNumber: 1000
+homeDirectory: /home/cent
+
+dn: cn=cent,ou=Group,dc=srv,dc=world
+objectClass: posixGroup
+cn: Cent
+gidNumber: 1000
+memberUid: cent
+
+[root@dlp ~]# ldapadd -x -D cn=Manager,dc=srv,dc=world -W -f ldapuser.ldif 
+Enter LDAP Password:
+adding new entry "uid=cent,ou=People,dc=srv,dc=world"
+
+adding new entry "cn=cent,ou=Group,dc=srv,dc=world"
+
+添加本机的用户和群组到ldap目录
+
+[root@dlp ~]# vi ldapuser.sh
+# extract local users and groups who have 1000-9999 digit UID
+# replace "SUFFIX=***" to your own domain name
+# this is an example
+ #!/bin/bash
+
+SUFFIX='dc=srv,dc=world'
+LDIF='ldapuser.ldif'
+
+echo -n > $LDIF
+GROUP_IDS=()
+grep "x:[1-9][0-9][0-9][0-9]:" /etc/passwd | (while read TARGET_USER
+do
+    USER_ID="$(echo "$TARGET_USER" | cut -d':' -f1)"
+
+    USER_NAME="$(echo "$TARGET_USER" | cut -d':' -f5 | cut -d' ' -f1,2)"
+    [ ! "$USER_NAME" ] && USER_NAME="$USER_ID"
+
+    LDAP_SN="$(echo "$USER_NAME" | cut -d' ' -f2)"
+    [ ! "$LDAP_SN" ] && LDAP_SN="$USER_NAME"
+
+    LASTCHANGE_FLAG="$(grep "${USER_ID}:" /etc/shadow | cut -d':' -f3)"
+    [ ! "$LASTCHANGE_FLAG" ] && LASTCHANGE_FLAG="0"
+
+    SHADOW_FLAG="$(grep "${USER_ID}:" /etc/shadow | cut -d':' -f9)"
+    [ ! "$SHADOW_FLAG" ] && SHADOW_FLAG="0"
+
+    GROUP_ID="$(echo "$TARGET_USER" | cut -d':' -f4)"
+    [ ! "$(echo "${GROUP_IDS[@]}" | grep "$GROUP_ID")" ] && GROUP_IDS=("${GROUP_IDS[@]}" "$GROUP_ID")
+
+    echo "dn: uid=$USER_ID,ou=People,$SUFFIX" >> $LDIF
+    echo "objectClass: inetOrgPerson" >> $LDIF
+    echo "objectClass: posixAccount" >> $LDIF
+    echo "objectClass: shadowAccount" >> $LDIF
+    echo "sn: $LDAP_SN" >> $LDIF
+    echo "givenName: $(echo "$USER_NAME" | awk '{print $1}')" >> $LDIF
+    echo "cn: $USER_NAME" >> $LDIF
+    echo "displayName: $USER_NAME" >> $LDIF
+    echo "uidNumber: $(echo "$TARGET_USER" | cut -d':' -f3)" >> $LDIF
+    echo "gidNumber: $(echo "$TARGET_USER" | cut -d':' -f4)" >> $LDIF
+    echo "userPassword: {crypt}$(grep "${USER_ID}:" /etc/shadow | cut -d':' -f2)" >> $LDIF
+    echo "gecos: $USER_NAME" >> $LDIF
+    echo "loginShell: $(echo "$TARGET_USER" | cut -d':' -f7)" >> $LDIF
+    echo "homeDirectory: $(echo "$TARGET_USER" | cut -d':' -f6)" >> $LDIF
+    echo "shadowExpire: $(passwd -S "$USER_ID" | awk '{print $7}')" >> $LDIF
+    echo "shadowFlag: $SHADOW_FLAG" >> $LDIF
+    echo "shadowWarning: $(passwd -S "$USER_ID" | awk '{print $6}')" >> $LDIF
+    echo "shadowMin: $(passwd -S "$USER_ID" | awk '{print $4}')" >> $LDIF
+    echo "shadowMax: $(passwd -S "$USER_ID" | awk '{print $5}')" >> $LDIF
+    echo "shadowLastChange: $LASTCHANGE_FLAG" >> $LDIF
+    echo >> $LDIF
+done
+
+for TARGET_GROUP_ID in "${GROUP_IDS[@]}"
+do
+    LDAP_CN="$(grep ":${TARGET_GROUP_ID}:" /etc/group | cut -d':' -f1)"
+
+    echo "dn: cn=$LDAP_CN,ou=Group,$SUFFIX" >> $LDIF
+    echo "objectClass: posixGroup" >> $LDIF
+    echo "cn: $LDAP_CN" >> $LDIF
+    echo "gidNumber: $TARGET_GROUP_ID" >> $LDIF
+
+    for MEMBER_UID in $(grep ":${TARGET_GROUP_ID}:" /etc/passwd | cut -d':' -f1,3)
+    do
+        UID_NUM=$(echo "$MEMBER_UID" | cut -d':' -f2)
+        [ $UID_NUM -ge 1000 -a $UID_NUM -le 9999 ] && echo "memberUid: $(echo "$MEMBER_UID" | cut -d':' -f1)" >> $LDIF
+    done
+    echo >> $LDIF
+done
+)
+
+[root@dlp ~]# sh ldapuser.sh 
+[root@dlp ~]# ldapadd -x -D cn=Manager,dc=srv,dc=world -W -f ldapuser.ldif 
+Enter LDAP Password:
+adding new entry "uid=cent,ou=People,dc=srv,dc=world"
+adding new entry "uid=redhat,ou=People,dc=srv,dc=world"
+adding new entry "uid=ubuntu,ou=People,dc=srv,dc=world"
+adding new entry "uid=debian,ou=People,dc=srv,dc=world"
+adding new entry "cn=cent,ou=Group,dc=srv,dc=world"
+adding new entry "cn=redhat,ou=Group,dc=srv,dc=world"
+adding new entry "cn=ubuntu,ou=Group,dc=srv,dc=world"
+adding new entry "cn=debian,ou=Group,dc=srv,dc=world"
+
+    [root@dlp ~]# vi ldapuser.sh
+# extract local users and groups who have 1000-9999 digit UID
+# replace "SUFFIX=***" to your own domain name
+# this is an example
+ #!/bin/bash
+
+SUFFIX='dc=srv,dc=world'
+LDIF='ldapuser.ldif'
+
+echo -n > $LDIF
+GROUP_IDS=()
+grep "x:[1-9][0-9][0-9][0-9]:" /etc/passwd | (while read TARGET_USER
+do
+    USER_ID="$(echo "$TARGET_USER" | cut -d':' -f1)"
+
+    USER_NAME="$(echo "$TARGET_USER" | cut -d':' -f5 | cut -d' ' -f1,2)"
+    [ ! "$USER_NAME" ] && USER_NAME="$USER_ID"
+
+    LDAP_SN="$(echo "$USER_NAME" | cut -d' ' -f2)"
+    [ ! "$LDAP_SN" ] && LDAP_SN="$USER_NAME"
+
+    LASTCHANGE_FLAG="$(grep "${USER_ID}:" /etc/shadow | cut -d':' -f3)"
+    [ ! "$LASTCHANGE_FLAG" ] && LASTCHANGE_FLAG="0"
+
+    SHADOW_FLAG="$(grep "${USER_ID}:" /etc/shadow | cut -d':' -f9)"
+    [ ! "$SHADOW_FLAG" ] && SHADOW_FLAG="0"
+
+    GROUP_ID="$(echo "$TARGET_USER" | cut -d':' -f4)"
+    [ ! "$(echo "${GROUP_IDS[@]}" | grep "$GROUP_ID")" ] && GROUP_IDS=("${GROUP_IDS[@]}" "$GROUP_ID")
+
+    echo "dn: uid=$USER_ID,ou=People,$SUFFIX" >> $LDIF
+    echo "objectClass: inetOrgPerson" >> $LDIF
+    echo "objectClass: posixAccount" >> $LDIF
+    echo "objectClass: shadowAccount" >> $LDIF
+    echo "sn: $LDAP_SN" >> $LDIF
+    echo "givenName: $(echo "$USER_NAME" | awk '{print $1}')" >> $LDIF
+    echo "cn: $USER_NAME" >> $LDIF
+    echo "displayName: $USER_NAME" >> $LDIF
+    echo "uidNumber: $(echo "$TARGET_USER" | cut -d':' -f3)" >> $LDIF
+    echo "gidNumber: $(echo "$TARGET_USER" | cut -d':' -f4)" >> $LDIF
+    echo "userPassword: {crypt}$(grep "${USER_ID}:" /etc/shadow | cut -d':' -f2)" >> $LDIF
+    echo "gecos: $USER_NAME" >> $LDIF
+    echo "loginShell: $(echo "$TARGET_USER" | cut -d':' -f7)" >> $LDIF
+    echo "homeDirectory: $(echo "$TARGET_USER" | cut -d':' -f6)" >> $LDIF
+    echo "shadowExpire: $(passwd -S "$USER_ID" | awk '{print $7}')" >> $LDIF
+    echo "shadowFlag: $SHADOW_FLAG" >> $LDIF
+    echo "shadowWarning: $(passwd -S "$USER_ID" | awk '{print $6}')" >> $LDIF
+    echo "shadowMin: $(passwd -S "$USER_ID" | awk '{print $4}')" >> $LDIF
+    echo "shadowMax: $(passwd -S "$USER_ID" | awk '{print $5}')" >> $LDIF
+    echo "shadowLastChange: $LASTCHANGE_FLAG" >> $LDIF
+    echo >> $LDIF
+done
+
+for TARGET_GROUP_ID in "${GROUP_IDS[@]}"
+do
+    LDAP_CN="$(grep ":${TARGET_GROUP_ID}:" /etc/group | cut -d':' -f1)"
+
+    echo "dn: cn=$LDAP_CN,ou=Group,$SUFFIX" >> $LDIF
+    echo "objectClass: posixGroup" >> $LDIF
+    echo "cn: $LDAP_CN" >> $LDIF
+    echo "gidNumber: $TARGET_GROUP_ID" >> $LDIF
+
+    for MEMBER_UID in $(grep ":${TARGET_GROUP_ID}:" /etc/passwd | cut -d':' -f1,3)
+    do
+        UID_NUM=$(echo "$MEMBER_UID" | cut -d':' -f2)
+        [ $UID_NUM -ge 1000 -a $UID_NUM -le 9999 ] && echo "memberUid: $(echo "$MEMBER_UID" | cut -d':' -f1)" >> $LDIF
+    done
+    echo >> $LDIF
+done
+)
+
+[root@dlp ~]# sh ldapuser.sh 
+[root@dlp ~]# ldapadd -x -D cn=Manager,dc=srv,dc=world -W -f ldapuser.ldif 
+Enter LDAP Password:
+adding new entry "uid=cent,ou=People,dc=srv,dc=world"
+adding new entry "uid=redhat,ou=People,dc=srv,dc=world"
+adding new entry "uid=ubuntu,ou=People,dc=srv,dc=world"
+adding new entry "uid=debian,ou=People,dc=srv,dc=world"
+adding new entry "cn=cent,ou=Group,dc=srv,dc=world"
+adding new entry "cn=redhat,ou=Group,dc=srv,dc=world"
+adding new entry "cn=ubuntu,ou=Group,dc=srv,dc=world"
+adding new entry "cn=debian,ou=Group,dc=srv,dc=world"
+
+3、安装phpLDAPadmin来web配置LDAP
+
+安装和配置httpd
+
+[root@www ~]# yum -y install httpd
+# remove welcome page
+[root@www ~]# rm -f /etc/httpd/conf.d/welcome.conf
+[root@www ~]# vi /etc/httpd/conf/httpd.conf
+# line 86: change to admin's email address
+ServerAdmin root@srv.world
+# line 95: change to your server's name
+ServerName www.srv.world:80
+# line 151: change
+AllowOverride All
+# line 164: add file name that it can access only with directory's name
+DirectoryIndex index.html index.cgi index.php
+# add follows to the end
+# server's response header
+ServerTokens Prod
+# keepalive is ON
+KeepAlive On
+[root@www ~]# systemctl start httpd
+[root@www ~]# systemctl enable httpd
+[root@www ~]# vi /var/www/html/index.html
+ <html>
+<body>
+<div style="width: 100%; font-size: 40px; font-weight: bold; text-align: center;">
+Test Page
+</div>
+</body>
+</html>
+
+   [root@www ~]# yum -y install httpd
+# remove welcome page
+[root@www ~]# rm -f /etc/httpd/conf.d/welcome.conf
+[root@www ~]# vi /etc/httpd/conf/httpd.conf
+# line 86: change to admin's email address
+ServerAdmin root@srv.world
+# line 95: change to your server's name
+ServerName www.srv.world:80
+# line 151: change
+AllowOverride All
+# line 164: add file name that it can access only with directory's name
+DirectoryIndex index.html index.cgi index.php
+# add follows to the end
+# server's response header
+ServerTokens Prod
+# keepalive is ON
+KeepAlive On
+[root@www ~]# systemctl start httpd
+[root@www ~]# systemctl enable httpd
+[root@www ~]# vi /var/www/html/index.html
+ <html>
+<body>
+<div style="width: 100%; font-size: 40px; font-weight: bold; text-align: center;">
+Test Page
+</div>
+</body>
+</html>
+安装php
+
+[root@www ~]# yum -y install php php-mbstring php-pear
+[root@www ~]# vi /etc/php.ini
+# line 878: uncomment and add your timezone
+date.timezone = "Asia/Shanghai"
+[root@www ~]# systemctl restart httpd
+[root@www ~]# vi /var/www/html/index.php
+ <html>
+<body>
+<div style="width: 100%; font-size: 40px; font-weight: bold; text-align: center;">
+<?php
+   print Date("Y/m/d");
+?>
+</div>
+</body>
+</html>
+
+   [root@www ~]# yum -y install php php-mbstring php-pear
+[root@www ~]# vi /etc/php.ini
+# line 878: uncomment and add your timezone
+date.timezone = "Asia/Shanghai"
+[root@www ~]# systemctl restart httpd
+[root@www ~]# vi /var/www/html/index.php
+ <html>
+<body>
+<div style="width: 100%; font-size: 40px; font-weight: bold; text-align: center;">
+<?php
+   print Date("Y/m/d");
+?>
+</div>
+</body>
+</html>
+
+安装phpLDAP admin
+
+[root@dlp ~]# wget http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+[root@dlp ~]# rpm -ivh epel-release-latest-7.noarch.rpm
+[root@dlp ~]# yum repolist      ##检查是否已添加至源列表
+# install from EPEL
+[root@dlp ~]# yum --enablerepo=epel -y install phpldapadmin
+[root@dlp ~]# vi /etc/phpldapadmin/config.php
+# line 397: uncomment, line 398: comment out
+$servers->setValue('login','attr','dn');
+// $servers->setValue('login','attr','uid');
+[root@dlp ~]# vi /etc/httpd/conf.d/phpldapadmin.conf
+Alias /phpldapadmin /usr/share/phpldapadmin/htdocs
+Alias /ldapadmin /usr/share/phpldapadmin/htdocs
+<Directory /usr/share/phpldapadmin/htdocs>
+  <IfModule mod_authz_core.c>
+    # Apache 2.4
+    # line 12: add access permission
+    Require local
+    Require ip 10.0.0.0/24
+[root@dlp ~]# systemctl restart httpd 
+
+  [root@dlp ~]# wget http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+[root@dlp ~]# rpm -ivh epel-release-latest-7.noarch.rpm
+[root@dlp ~]# yum repolist      ##检查是否已添加至源列表
+# install from EPEL
+[root@dlp ~]# yum --enablerepo=epel -y install phpldapadmin
+[root@dlp ~]# vi /etc/phpldapadmin/config.php
+# line 397: uncomment, line 398: comment out
+$servers->setValue('login','attr','dn');
+// $servers->setValue('login','attr','uid');
+[root@dlp ~]# vi /etc/httpd/conf.d/phpldapadmin.conf
+Alias /phpldapadmin /usr/share/phpldapadmin/htdocs
+Alias /ldapadmin /usr/share/phpldapadmin/htdocs
+<Directory /usr/share/phpldapadmin/htdocs>
+  <IfModule mod_authz_core.c>
+    # Apache 2.4
+    # line 12: add access permission
+    Require local
+    Require ip 10.0.0.0/24
+[root@dlp ~]# systemctl restart httpd 
+通过phpLDAPadmin访问
+
+http://www.xww.world/ldapadmin
